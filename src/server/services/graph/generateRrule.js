@@ -8,6 +8,9 @@ const DaySegment = require('../../models/DaySegment');
 const { log } = require('../../log');
 const moment = require('moment');
 
+const RRULE_MIN_DATE = '1970-01-01';
+const RRULE_MAX_DATE = '2050-01-01';
+
 /**
  * Uses the provided week & start/end dates to return the RRule for this pattern.
  * @param {*} weekId The id of the week pattern to be used.
@@ -208,11 +211,11 @@ function getRruleDate(dateString) {
 	let dateStringUse = dateString;
 	// Fix up -infinity & infinity to be real dates. See above.
 	if (dateStringUse === '-infinity') {
-		dateStringUse = '1970-01-01';
+		dateStringUse = RRULE_MIN_DATE;
 	} else if (dateStringUse === 'infinity') {
-		dateStringUse = '2050-01-01';
+		dateStringUse = RRULE_MAX_DATE;
 	}
 	return new Date(dateStringUse);
 }
 
-module.exports = { generateRrule, getRruleDate };
+module.exports = { generateRrule, getRruleDate, RRULE_MIN_DATE, RRULE_MAX_DATE };

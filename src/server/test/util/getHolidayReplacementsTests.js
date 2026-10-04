@@ -12,6 +12,7 @@ const {
     getHolidayReplacements
 } = require('../../services/graph/getHolidayReplacements');
 
+// SHL I did not carefully look at this file. I wonder why you are doing stub instead of storing values in the DB for checking.
 describe('getHolidayReplacements', () => {
     // The model methods are stubbed, so the resolver does not use this
     // connection. Supplying an object still verifies that the function accepts
@@ -267,6 +268,7 @@ describe('getHolidayReplacements', () => {
                     }
             ]);
 
+        // SHL OED normally suppresses all logging during tests. What was you plan for logged msgs?
             const warningStub = sinon.stub(log, 'warn');
 
             const replacements = await getHolidayReplacements(

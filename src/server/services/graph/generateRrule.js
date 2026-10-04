@@ -218,4 +218,5 @@ function getRruleDate(dateString) {
 	return new Date(dateStringUse);
 }
 
+// SHL Why is this exported if only used in this file?
 module.exports = { generateRrule, getRruleDate, RRULE_MIN_DATE, RRULE_MAX_DATE };

@@ -10,6 +10,7 @@ const { log } = require('../../log');
 
 const Holidays = DateHolidays.default || DateHolidays;
 
+// SHL More commenting within the code lines would be good in some parts where there is none. Mostly it is good.
 /**
  * Creates a date-holidays provider from an OED location.
  *
@@ -22,12 +23,16 @@ const Holidays = DateHolidays.default || DateHolidays;
  * @returns {Holidays} A configured date-holidays provider.
  */
 function createHolidayProvider(location) {
+        // SHL Should be tab not space indented & the formatting is off. I suggest you use VSC format document to do all formatting.
     const locationParts = String(location).split('-');
     const country = locationParts[0];
     const state = locationParts[1];
     const region = locationParts[2];
 
+    // SHL I think the logic could be better. Check each item with if/else if and then the else would be no country error.
+    // Also, set a variable with the Holiday for each case and do a single return at the end.
     if (!country) {
+        // SHL When have an error need to log via OED mechanism and not just throw error.
             throw new Error('Cannot resolve a holiday without a location.');
     }
 
@@ -46,6 +51,7 @@ function createHolidayProvider(location) {
  * Returns all calendar years that may contain a holiday inside the requested
  * date range.
  *
+// SHL I think the document talks about holidays before the start date too. See comment below.
  * The end year is included here. Holidays that occur on or after the actual
  * end date are removed later by the half-open range check.
  *
@@ -54,6 +60,7 @@ function createHolidayProvider(location) {
  * @returns {Array<number>} The calendar years in the range.
  */
 function getYearsInRange(startDateKey, endDateKey) {
+        // SHL I think finding years by manipulating the string to a number is not great. I think we discussed moment that is used by OED. Please switch to that. It may even be able to give you what you want with an interval.
     const startYear = Number(startDateKey.slice(0, 4));
     const endYear = Number(endDateKey.slice(0, 4));
     const years = [];
@@ -73,6 +80,7 @@ function getYearsInRange(startDateKey, endDateKey) {
  * midnight.
  *
  * @param {*} value The Conversion Segment boundary.
+ // Should you ever get an error? If not really, then is this name need here or elsewhere?
  * @param {string} boundaryName Name used in an error message.
  * @returns {string} The normalized date in YYYY-MM-DD format.
  */
@@ -84,7 +92,7 @@ function getDateKey(value, boundaryName) {
                     `Invalid ${boundaryName} date for holiday replacement lookup: ${value}`
             );
     }
-
+// SHL Should see if all these date items can be switched to moment. Will not mark more of them.
     return date.toISOString().slice(0, 10);
 }
 
@@ -106,6 +114,7 @@ function getDateKey(value, boundaryName) {
  * @returns {Promise<Map<string, Object>>} Holiday replacements sorted by date.
  */
 async function getHolidayReplacements(
+        // SHL OED does not want parameters spread out but on 1 line when possible. You should look at existing code to see how we do formatting.
     weekId,
     startDate,
     endDate,
@@ -114,6 +123,7 @@ async function getHolidayReplacements(
     const startDateKey = getDateKey(startDate, 'start');
     const endDateKey = getDateKey(endDate, 'end');
 
+    // SHL You are again throwing errors without logging and I'm unclear how these happen. I notice that here there is no identifier (fine probably) but in another place it does. Also, what is your plan on how to deal with all these errors - I don't see try/catch in the code. Finally, the test code would be more comprehensive if it tested error conditions.
     if (startDateKey >= endDateKey) {
             throw new Error(
                     `Holiday replacement range must have start before end: ` +
@@ -126,17 +136,20 @@ async function getHolidayReplacements(
 
     // A Week Pattern without a Holiday Instance Group continues to use its
     // normal weekly pattern without holiday replacements.
+    // SHL I would think if a single return with if/else if could avoid them being in multiple places.
     if (week.holidayInstanceGroupId == null) {
             return new Map();
     }
 
     // Each member provides the saved holiday name and location together with
     // the Day Pattern that replaces the normal weekly pattern.
+    // SHL Conform with OED formatting expectations. I won't mark more of these.
     const members = await HolidayGroupMember.getByGroupId(
             week.holidayInstanceGroupId,
             conn
     );
 
+    // SHL Does OED allow an empty members list if there is a holiday group? If so, that should probably be reconsidered.
     if (members.length === 0) {
             return new Map();
     }
@@ -161,7 +174,7 @@ async function getHolidayReplacements(
                             `Cannot resolve holiday "${holidayName}" because it has no location.`
                     );
             }
-
+            // SHL Did you consider using a Set data structure that would automatically not allow duplicates? Same for holidaysByLocationAndYear.
             if (!providersByLocation.has(location)) {
                     providersByLocation.set(
                             location,
@@ -171,6 +184,7 @@ async function getHolidayReplacements(
 
             const provider = providersByLocation.get(location);
 
+                // Were you able to find out if the holiday server can do multiple years/holidays?
             for (const year of years) {
                     const providerCacheKey = `${location}:${year}`;
 
@@ -186,6 +200,7 @@ async function getHolidayReplacements(
                                     );
                             }
 
+                        // SHL This seems unlikely to happen and is a very weak check for the data returned. Does the UI do any validation? If yes, then combine. If no, then everywhere should be consistent to use new way or none. I would need to see the return format to give thoughts on how to test.
                             if (!Array.isArray(providerHolidays)) {
                                     throw new Error(
                                             `Holiday provider returned invalid data for ` +
@@ -206,6 +221,7 @@ async function getHolidayReplacements(
                     // Use exact matching. Substring matching is unsafe because names
                     // such as "Thanksgiving Day" and "Day after Thanksgiving Day"
                     // would both match "Thanksgiving".
+                    // SHL I'm curious about this being plural. How do you get multiple matches for a give holiday in a given year?
                     const matches = providerHolidays.filter(
                             holiday => holiday.name === holidayName
                     );
@@ -214,6 +230,7 @@ async function getHolidayReplacements(
                     // not occur every year. A successful provider response with no
                     // exact match means there is no occurrence for that year.
                     if (matches.length === 0) {
+                        // SHL If can easily do if/else to avoid continue I would. I see a several of these below so wonder how the logic could be done.
                             continue;
                     }
 
@@ -230,6 +247,7 @@ async function getHolidayReplacements(
                             }
 
                         
+                            // SHL Here you do start/end but see my comment above.
                             if (
                                     holidayDate < startDateKey ||
                                     holidayDate >= endDateKey
@@ -247,6 +265,7 @@ async function getHolidayReplacements(
                             }
 
                             replacements.set(holidayDate, {
+                                // SHL Curious why some are JSON key/value and some are not.
                                     dayPatternId: member.day_pattern_id,
                                     holidayName,
                                     holidayInstanceId: member.holiday_instance_id,

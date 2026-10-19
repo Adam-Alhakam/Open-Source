@@ -218,4 +218,4 @@ function getRruleDate(dateString) {
 	return new Date(dateStringUse);
 }
 
-module.exports = { generateRrule, getRruleDate, RRULE_MIN_DATE, RRULE_MAX_DATE };
+module.exports = { generateRrule, getRruleDate };

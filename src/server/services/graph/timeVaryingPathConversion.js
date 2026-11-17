@@ -4,6 +4,7 @@
 
 const ConversionSegment = require('../../models/ConversionSegment');
 const Conversion = require('../../models/Conversion');
+const DaySegment = require('../../models/DaySegment');
 const invertConversion = require('./pathConversion').invertConversion;
 const updatedConversion = require('./pathConversion').updatedConversion;
 const { generateRrule, getRruleDate } = require('./generateRrule');
@@ -93,6 +94,13 @@ async function timeVaryingPathConversion(path, conn) {
 				// occurs across the conversion segment. Note since day segments can be used multiple times in a week pattern,
 				// this means there may be multiple entries of the day/time in a given week.
 				const occurrences = [];
+				if (reversed) {
+					ruleInfo.forEach(info => {
+						const { convertedSlope, convertedIntercept } = invertConversion(info.slope, info.intercept);
+						info.slope = convertedSlope;
+						info.intercept = convertedIntercept;
+					});
+				}
 				// Get the start and end date for this conversion segment where uses a function to fix up infinity cases.
 				const start = getRruleDate(curSegment.startTime);
 				const end = getRruleDate(curSegment.endTime);
@@ -113,20 +121,15 @@ async function timeVaryingPathConversion(path, conn) {
 						info.rule.between(start, end, true),
 						holidayReplacements
 					));
-
-					// II.b. If reversed is true then invert the slope/intercept for each conversion using invertConversion().
-					if (reversed) {
-						// Reversed so invert segment found.
-						const { convertedSlope, convertedIntercept } = invertConversion(ruleInfo.slope, ruleInfo.intercept)
-						ruleInfo = {
-							...ruleInfo,
-							slope: convertedSlope,
-							intercept: convertedIntercept
-						};
-					}
 				});
 
-				const holidaySegments = await createHolidayReplacementSegments(holidayReplacements, curSegment.sourceId, curSegment.destinationId, conn);
+				const holidaySegments = await createHolidayReplacementSegments(
+					holidayReplacements,
+					curSegment.sourceId,
+					curSegment.destinationId,
+					reversed,
+					conn
+				);
 				// Fill the dates removed from the normal Week Pattern with the configured
 				// Holiday Day Pattern segments.
 				edgeSegments[i].push(...holidaySegments);
@@ -275,10 +278,17 @@ function filterHolidayOccurrences(occurrences, holidayReplacements) {
  * @param {Map<string, Object>} holidayReplacements Replacements keyed by date.
  * @param {*} sourceId The conversion source unit ID.
  * @param {*} destinationId The conversion destination unit ID.
+ * @param {boolean} reversed Whether the conversion is being used in reverse.
  * @param {*} conn The database connection to use.
  * @returns {Promise<ConversionSegment[]>} Holiday segments sorted by start time.
  */
-async function createHolidayReplacementSegments(holidayReplacements, sourceId, destinationId, conn) {
+async function createHolidayReplacementSegments(
+	holidayReplacements,
+	sourceId,
+	destinationId,
+	reversed,
+	conn
+) {
 	const segments = [];
 
 	for (const [date, replacement] of holidayReplacements) {
@@ -298,7 +308,24 @@ async function createHolidayReplacementSegments(holidayReplacements, sourceId, d
 			const endTime = new Date(`${date}T00:00:00.000Z`);
 			endTime.setUTCHours(daySegment.endHour, 0, 0, 0);
 
-			segments.push(new ConversionSegment(sourceId, destinationId, null, daySegment.slope, daySegment.intercept, startTime, endTime, ''));
+			let slope = daySegment.slope;
+			let intercept = daySegment.intercept;
+			if (reversed) {
+				const { convertedSlope, convertedIntercept } = invertConversion(slope, intercept);
+				slope = convertedSlope;
+				intercept = convertedIntercept;
+			}
+
+			segments.push(new ConversionSegment(
+				sourceId,
+				destinationId,
+				null,
+				slope,
+				intercept,
+				startTime,
+				endTime,
+				''
+			));
 		}
 	}
 

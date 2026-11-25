@@ -94,6 +94,9 @@ async function timeVaryingPathConversion(path, conn) {
 				// occurs across the conversion segment. Note since day segments can be used multiple times in a week pattern,
 				// this means there may be multiple entries of the day/time in a given week.
 				const occurrences = [];
+
+				// If reversed is true, invert the slope and intercept for each generated
+				// RRule segment before creating its concrete Conversion Segments.
 				if (reversed) {
 					ruleInfo.forEach(info => {
 						const { convertedSlope, convertedIntercept } = invertConversion(info.slope, info.intercept);
